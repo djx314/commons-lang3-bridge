@@ -741,24 +741,25 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     searchArgs: S*
   ): Boolean = {
     val applyM = Adt.CoProduct4[Char, CharSequence, Option[Char], Option[CharSequence]].typeOnly[S]
-
     val adtSeq = Adt.CoProduct2[Seq[Char], Seq[CharSequence]]
 
     val adtParameter: Adt.CoProduct2[Seq[Char], Seq[CharSequence]] = applyM.fold(
       func1 => adtSeq(func1.higherKindApply[Seq](searchArgs)),
       func2 => adtSeq(func2.higherKindApply[Seq](searchArgs)),
       { func3 =>
-        val newSeq = for (s <- searchArgs) yield func3.adtFunctionApply(s)
-        adtSeq(newSeq.collect { case Some(t) => t })
+        val applySeq   = for (s <- searchArgs) yield func3.adtFunctionApply(s)
+        val collectSeq = applySeq.collect { case Some(t) => t }
+        adtSeq(collectSeq)
       },
       { func4 =>
-        val newSeq = for (s <- searchArgs) yield func4.adtFunctionApply(s)
-        adtSeq(newSeq.collect { case Some(t) => t })
+        val applySeq   = for (s <- searchArgs) yield func4.adtFunctionApply(s)
+        val collectSeq = applySeq.collect { case Some(t) => t }
+        adtSeq(collectSeq)
       }
     )
 
     adtParameter.fold(
-      chars => Strings.containsAny(strOrNull, chars.toArray[Char]: _*),
+      chars => Strings.containsAny(strOrNull, chars: _*),
       css =>
         if (css.length == 1) {
           Strings.containsAny(strOrNull, css.head)
