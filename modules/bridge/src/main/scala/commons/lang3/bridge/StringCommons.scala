@@ -7,16 +7,9 @@ import java.nio.charset.Charset
 import java.util.Locale
 import java.util.function.Supplier
 import java.util.Objects
+import scala.collection.compat._
 
 private object privateUtils {
-  /*trait SingleTypeMapApply[U] {
-    @inline def input[T](t: T)(implicit map: SingleTypeMap[T, U]): U = map.input(t)
-  }
-  object SingleTypeMapApply {
-    private object value extends SingleTypeMapApply[Any]
-    @inline def get[U]: SingleTypeMapApply[U] = value.asInstanceOf[SingleTypeMapApply[U]]
-  }
-  @inline def mapTo[O]: SingleTypeMapApply[O] = SingleTypeMapApply.get*/
   def mapToStrOpt[T: Adt.CoProducts2[*, String, Option[String]]](t: T): Option[String] = {
     val applyM = Adt.CoProduct2[String, Option[String]](t)
     applyM.fold(Option(_), identity)
@@ -27,36 +20,6 @@ private object privateUtils {
   }
   def mapToCharSeq(t: Seq[Option[Char]]): Seq[Char]                         = t.collect { case Some(s) => s }
   def mapToCharSequenceSeq(t: Seq[Option[CharSequence]]): Seq[CharSequence] = for (i <- t) yield i.orNull
-
-  /*@FunctionalInterface
-  trait SingleTypeMap[I, O] {
-    def input(i: I): O
-  }
-
-  object SingleTypeMap {
-    implicit def toStrOptImplicit[U: Adt.CoProducts2[*, String, Option[String]]]: SingleTypeMap[U, Option[String]] =
-      strToOpt
-    implicit def toCharSequenceOptImplicit[U: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]]
-      : SingleTypeMap[U, Option[CharSequence]] =
-      csToOpt
-    implicit def seqOptionCharToSeqCharImplicit: SingleTypeMap[Seq[Option[Char]], Seq[Char]] = tranCharSeqOptFunc
-    implicit def seqOptionCharSequenceToSeqCharSequenceImplicit: SingleTypeMap[Seq[Option[CharSequence]], Seq[CharSequence]] =
-      tranCharSeqSeqOptFunc
-  }
-
-  private def strToOpt[U: Adt.CoProducts2[*, String, Option[String]]](u: U): Option[String] = {
-    val applyM = Adt.CoProduct2[String, Option[String]](u)
-    applyM.fold(Option(_), identity)
-  }
-
-  private def csToOpt[U: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](u: U): Option[CharSequence] = {
-    val applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]](u)
-    applyM.fold(Option(_), identity)
-  }
-
-  private def tranCharSeqOptFunc(seq: Seq[Option[Char]]): Seq[Char] = seq.filter(_.isDefined).map(_.get)
-
-  private def tranCharSeqSeqOptFunc(seq: Seq[Option[CharSequence]]): Seq[CharSequence] = seq.map(_.orNull)*/
 }
 
 /** TODO
@@ -774,27 +737,36 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     * @return
     *   the `true` if any of the chars are found, `false` if no match or null input
     */
-  def containsAny[S: Options4F[Seq, *, Seq[Char], Seq[CharSequence], Seq[Option[Char]], Seq[Option[CharSequence]]]](
+  def containsAny[S: Adt.CoProducts4[*, Char, CharSequence, Option[Char], Option[CharSequence]]](
     searchArgs: S*
   ): Boolean = {
-    def dealWithSeqChar(chars: Seq[Char]): Boolean = Strings.containsAny(strOrNull, chars.toArray[Char]: _*)
-    def applyM = Adt.CoProduct4[Seq[Char], Seq[CharSequence], Seq[Option[Char]], Seq[Option[CharSequence]]](searchArgs)
+    val applyM = Adt.CoProduct4[Char, CharSequence, Option[Char], Option[CharSequence]].typeOnly[S]
 
-    def dealWithSeqCharSequence(css: Seq[CharSequence]): Boolean = if (css.length == 1) {
-      Strings.containsAny(strOrNull, css.head)
-    } else {
-      Strings.containsAny(strOrNull, css: _*)
-    }
+    val adtSeq = Adt.CoProduct2[Seq[Char], Seq[CharSequence]]
 
-    if (searchArgs == null) {
-      Strings.containsAny(strOrNull, null)
-    } else
-      applyM.fold(
-        dealWithSeqChar,
-        dealWithSeqCharSequence,
-        s => dealWithSeqChar(mapToCharSeq(s)),
-        s => dealWithSeqCharSequence(mapToCharSequenceSeq(s))
-      )
+    val adtParameter: Adt.CoProduct2[Seq[Char], Seq[CharSequence]] = applyM.fold(
+      func1 => adtSeq(func1.higherKindApply[Seq](searchArgs)),
+      func2 => adtSeq(func2.higherKindApply[Seq](searchArgs)),
+      { func3 =>
+        val newSeq = for (s <- searchArgs) yield func3.adtFunctionApply(s)
+        adtSeq(newSeq.collect { case Some(t) => t })
+      },
+      { func4 =>
+        val newSeq = for (s <- searchArgs) yield func4.adtFunctionApply(s)
+        adtSeq(newSeq.collect { case Some(t) => t })
+      }
+    )
+
+    adtParameter.fold(
+      chars => Strings.containsAny(strOrNull, chars.toArray[Char]: _*),
+      css =>
+        if (css.length == 1) {
+          Strings.containsAny(strOrNull, css.head)
+        } else {
+          Strings.containsAny(strOrNull, css: _*)
+        }
+    )
+
   }
 
   /** <p> Checks if the CharSequence contains any of the CharSequences in the given array, ignoring case. </p>
@@ -837,15 +809,15 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     * @return
     *   `true` if any of the search CharSequences are found, `false` otherwise
     */
-  def containsAnyIgnoreCase[S: Options2F[Seq, *, Seq[CharSequence], Seq[Option[CharSequence]]]](searchArgs: S*): Boolean = {
-    def dealWithSeqCharSeq(strs: Seq[CharSequence]) = Strings.containsAnyIgnoreCase(strOrNull, strs: _*)
-    def applyM                                      = Adt.CoProduct2[Seq[CharSequence], Seq[Option[CharSequence]]](searchArgs)
+  def containsAnyIgnoreCase[S: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchArgs: S*): Boolean = {
+    val applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[S]
 
-    if (searchArgs == null) {
-      Strings.equalsAnyIgnoreCase(strOrNull, null)
-    } else {
-      applyM.fold(dealWithSeqCharSeq, s => dealWithSeqCharSeq(mapToCharSequenceSeq(s)))
-    }
+    val newSeq: Seq[CharSequence] = applyM.fold(
+      t1 => t1.higherKindApply[Seq](searchArgs),
+      t2 => for (s <- searchArgs) yield t2.adtFunctionApply(s).orNull
+    )
+
+    Strings.containsAnyIgnoreCase(strOrNull, newSeq: _*)
   }
 
   /** <p>Checks if CharSequence contains a search CharSequence irrespective of case, handling `null`. Case-insensitivity is defined as by

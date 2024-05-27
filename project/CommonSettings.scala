@@ -26,12 +26,9 @@ object CommonSettings {
   private def genDirectory(sourceFile: File, c: String, parVersion: Option[(Long, Long)]): Seq[File] = {
     val common = sourceFile / c / "scala"
     val compat = parVersion match {
-      case Some((2, 11)) =>
-        Seq(sourceFile / c / "scala-2", sourceFile / c / "scala-2.11", sourceFile / c / "scala-2.11-2.12")
       case Some((2, 12)) =>
         Seq(
           sourceFile / c / "scala-2",
-          sourceFile / c / "scala-2.11-2.12",
           sourceFile / c / "scala-2.12",
           sourceFile / c / "scala-2.12-2.13"
         )
@@ -44,7 +41,7 @@ object CommonSettings {
     common +: compat
   }
 
-  val supportedScalaVersions = Seq(scalaV.v211, scalaV.v212, scalaV.v213, scalaV.v3)
+  val supportedScalaVersions = Seq(scalaV.v212, scalaV.v213, scalaV.v3)
 
   val pushSettings = Seq(
     version              := "0.1.0",
@@ -86,7 +83,7 @@ object CommonSettings {
 
   private val commonSetting = Seq(
     parVersion                                                   := CrossVersion.partialVersion(scalaVersion.value),
-    scalaVersion                                                 := scalaV.v213,
+    scalaVersion                                                 := scalaV.v212,
     scalacOptions                                                := scalacOptionsVersion(parVersion.value),
     org.scalafmt.sbt.ScalafmtPlugin.autoImport.scalafmtOnCompile := true,
     Compile / unmanagedSourceDirectories ++= {
