@@ -31,9 +31,7 @@ private object privateUtils {
   *   21:04
   */
 class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
-  type Options2F[F[_], U, T1, T2]         = Adt.CoProducts2[F[U], T1, T2]
-  type Options3F[F[_], U, T1, T2, T3]     = Adt.CoProducts3[F[U], T1, T2, T3]
-  type Options4F[F[_], U, T1, T2, T3, T4] = Adt.CoProducts4[F[U], T1, T2, T3, T4]
+  type Options2F[F[_], U, T1, T2] = Adt.CoProducts2[F[U], T1, T2]
 
   import privateUtils._
 
@@ -1694,35 +1692,42 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     *   the index of any of the chars, -1 if no match or null input
     */
   def indexOfAny[
-    S: Options3F[Seq, *, Seq[Char], Seq[CharSequence], Seq[Option[CharSequence]]]: Adt.CoProducts3[*, Char, CharSequence, Option[
-      SeqCharSequence
-    ]]
+    S: Adt.CoProducts6[*, Char, Option[Char], CharSequence, Option[CharSequence], SeqCharSequence, Option[SeqCharSequence]]
   ](
     searchArgs: S*
   ): Int = {
-    def seqMapping(args: Seq[S]) = Adt.CoProduct3[Seq[Char], Seq[CharSequence], Seq[Option[CharSequence]]](args)
-    def charMapping(elem: S)     = Adt.CoProduct3[Char, CharSequence, Option[SeqCharSequence]](elem)
-    def indexOfNull              = Strings.indexOfAny(strOrNull, null)
+
+    val charAdt =
+      Adt.CoProduct6[Char, Option[Char], CharSequence, Option[CharSequence], SeqCharSequence, Option[SeqCharSequence]].typeOnly[S]
+
+    def indexOfNull = Strings.indexOfAny(strOrNull, null)
 
     def dealWithSeqChar(chars: Seq[Char])             = Strings.indexOfAny(strOrNull, chars: _*)
     def dealWithSeqString(strings: Seq[CharSequence]) = Strings.indexOfAny(strOrNull, strings: _*)
     def dealWithChar(char: Char)                      = Strings.indexOfAny(strOrNull, char)
     def dealWithString(string: CharSequence)          = Strings.indexOfAny(strOrNull, string)
 
-    if (searchArgs == null)
-      indexOfNull
-    else if (searchArgs.length == 1)
-      charMapping(searchArgs.head).fold(
-        dealWithChar,
-        dealWithString,
-        opt => opt.map(dealWithString).getOrElse(indexOfNull)
+    if (searchArgs == null) indexOfNull
+    else if (searchArgs.length == 1) {
+      val arg0 = searchArgs.head
+      charAdt.fold(
+        func => dealWithChar(func.adtFunctionApply(arg0)),
+        func => func.adtFunctionApply(arg0).map(dealWithChar).getOrElse(indexOfNull),
+        func => dealWithString(func.adtFunctionApply(arg0)),
+        func => func.adtFunctionApply(arg0).map(dealWithString).getOrElse(indexOfNull),
+        func => dealWithString(func.adtFunctionApply(arg0)),
+        func => func.adtFunctionApply(arg0).map(dealWithString).getOrElse(indexOfNull)
       )
-    else
-      seqMapping(searchArgs).fold(
-        dealWithSeqChar,
-        dealWithSeqString,
-        s => dealWithSeqString(mapToCharSequenceSeq(s))
+    } else
+      charAdt.fold(
+        func => dealWithSeqChar(func.higherKindApply[Seq](searchArgs)),
+        func => dealWithSeqChar(mapToCharSeq(func.higherKindApply[Seq](searchArgs))),
+        func => dealWithSeqString(func.higherKindApply[Seq](searchArgs)),
+        func => dealWithSeqString(mapToCharSequenceSeq(func.higherKindApply[Seq](searchArgs))),
+        func => dealWithSeqString(func.higherKindApply[Seq](searchArgs)),
+        func => dealWithSeqString(mapToCharSequenceSeq(func.higherKindApply[Seq](searchArgs)))
       )
+
   }
 
   /** <p>Searches a CharSequence to find the first index of any character not in the given set of characters.</p>
