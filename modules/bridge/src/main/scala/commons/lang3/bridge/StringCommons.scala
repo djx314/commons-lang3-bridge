@@ -31,7 +31,6 @@ private object privateUtils {
   *   21:04
   */
 class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
-  type Options2F[F[_], U, T1, T2] = Adt.CoProducts2[F[U], T1, T2]
 
   import privateUtils._
 
@@ -233,16 +232,16 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     * @return
     *   A new Option[String] if suffix was appended, the same string otherwise.
     */
-  def appendIfMissing[S: Adt.CoProducts2[*, String, Option[String]], SS: Options2F[Seq, *, Seq[CharSequence], Seq[Option[CharSequence]]]](
+  def appendIfMissing[S: Adt.CoProducts2[*, String, Option[String]], SS: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](
     suffix: S,
     suffixes: SS*
   ): Option[String] = {
-    def suffixOrNull = mapToStrOpt(suffix).orNull
-    def applyM       = Adt.CoProduct2[Seq[CharSequence], Seq[Option[CharSequence]]](suffixes)
+    def suffixOrNull           = mapToStrOpt(suffix).orNull
+    def applyM                 = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[SS]
+    def sfs: Seq[CharSequence] = applyM.fold(_.higherKindApply[Seq](suffixes), _.higherKindApply[Seq](suffixes).map(_.orNull))
 
     if (suffixes == null) Option(Strings.appendIfMissing(strOrNull, suffixOrNull))
     else {
-      val sfs: Seq[CharSequence] = applyM.fold(identity, oss => oss.map(_.orNull))
       Option(Strings.appendIfMissing(strOrNull, suffixOrNull, sfs: _*))
     }
   }
@@ -288,18 +287,16 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     * @return
     *   A new String if suffix was appended, the same string otherwise.
     */
-  def appendIfMissingIgnoreCase[S: Adt.CoProducts2[*, String, Option[String]], SS: Options2F[Seq, *, Seq[CharSequence], Seq[
-    Option[CharSequence]
-  ]]](
+  def appendIfMissingIgnoreCase[S: Adt.CoProducts2[*, String, Option[String]], SS: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](
     suffix: S,
     suffixes: SS*
   ): Option[String] = {
-    def suffixOrNull = mapToStrOpt(suffix).orNull
-    def applyM       = Adt.CoProduct2[Seq[CharSequence], Seq[Option[CharSequence]]](suffixes)
+    def suffixOrNull           = mapToStrOpt(suffix).orNull
+    def applyM                 = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[SS]
+    def sfs: Seq[CharSequence] = applyM.fold(_.higherKindApply[Seq](suffixes), func => func.higherKindApply[Seq](suffixes).map(_.orNull))
 
     if (suffixes == null) Option(Strings.appendIfMissingIgnoreCase(strOrNull, suffixOrNull))
     else {
-      val sfs: Seq[CharSequence] = applyM.fold(identity, oss => oss.map(_.orNull))
       Option(Strings.appendIfMissingIgnoreCase(strOrNull, suffixOrNull, sfs: _*))
     }
   }
@@ -925,10 +922,12 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     * @return
     *   true if it contains none of the invalid chars, or is null
     */
-  def containsNone[I: Options2F[Seq, *, Seq[Char], Seq[Option[Char]]]](invalidChars: I*): Boolean = {
-    def dealWithSeqChar(chars: Seq[Char]): Boolean = Strings.containsNone(strOrNull, chars: _*)
-    val applyM                                     = Adt.CoProduct2[Seq[Char], Seq[Option[Char]]](invalidChars)
-    applyM.fold(dealWithSeqChar, s => dealWithSeqChar(mapToCharSeq(s)))
+  def containsNone[I: Adt.CoProducts2[*, Char, Option[Char]]](invalidChars: I*): Boolean = {
+    val applyM = Adt.CoProduct2[Char, Option[Char]].typeOnly[I]
+    val charSeq: Seq[Char] =
+      applyM.fold(_.higherKindApply[Seq](invalidChars), func => mapToCharSeq(func.higherKindApply[Seq](invalidChars)))
+
+    Strings.containsNone(strOrNull, charSeq: _*)
   }
 
   /** <p>Checks if the CharSequence contains only certain characters.</p>
@@ -1003,10 +1002,10 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     * @return
     *   true if it only contains valid chars and is non-null
     */
-  def containsOnly[V: Options2F[Seq, *, Seq[Char], Seq[Option[Char]]]](valid: V*): Boolean = {
-    val applyM                            = Adt.CoProduct2[Seq[Char], Seq[Option[Char]]](valid)
-    def dealWithSeqChar(chars: Seq[Char]) = Strings.containsOnly(strOrNull, chars: _*)
-    applyM.fold(dealWithSeqChar, s => dealWithSeqChar(mapToCharSeq(s)))
+  def containsOnly[V: Adt.CoProducts2[*, Char, Option[Char]]](valid: V*): Boolean = {
+    val applyM             = Adt.CoProduct2[Char, Option[Char]].typeOnly[V]
+    val charSeq: Seq[Char] = applyM.fold(_.higherKindApply[Seq](valid), func => mapToCharSeq(func.higherKindApply[Seq](valid)))
+    Strings.containsOnly(strOrNull, charSeq: _*)
   }
 
   /** <p>Check whether the given CharSequence contains any whitespace characters.</p>
@@ -1251,14 +1250,15 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     *   `true` if the input `sequence` is `null` AND no `searchStrings` are provided, or the input `sequence` ends in any of the provided
     *   case-sensitive `searchStrings`.
     */
-  def endsWithAny[S: Options2F[Seq, *, Seq[CharSequence], Seq[Option[CharSequence]]]](searchStrings: S*): Boolean = {
-    def applyM                                     = Adt.CoProduct2[Seq[CharSequence], Seq[Option[CharSequence]]](searchStrings)
-    def dealWithSeqString(strs: Seq[CharSequence]) = Strings.endsWithAny(strOrNull, strs: _*)
+  def endsWithAny[S: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchStrings: S*): Boolean = {
+    def applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[S]
+    def charSeqSeq: Seq[CharSequence] =
+      applyM.fold(_.higherKindApply[Seq](searchStrings), func => mapToCharSequenceSeq(func.higherKindApply[Seq](searchStrings)))
 
     if (searchStrings == null)
       Strings.endsWithAny(strOrNull, null)
     else
-      applyM.fold(dealWithSeqString, s => dealWithSeqString(mapToCharSequenceSeq(s)))
+      Strings.endsWithAny(strOrNull, charSeqSeq: _*)
   }
 
   /** <p>Case insensitive check if a CharSequence ends with a specified suffix.</p>
@@ -1333,14 +1333,15 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     *   `true` if the string is equal (case-sensitive) to any other element of `searchStrings`; `false` if {@code searchStrings} is null or
     *   contains no matches.
     */
-  def equalsAnyIgnoreCase[S: Options2F[Seq, *, Seq[CharSequence], Seq[Option[CharSequence]]]](searchStrings: S*): Boolean = {
-    def applyM                                     = Adt.CoProduct2[Seq[CharSequence], Seq[Option[CharSequence]]](searchStrings)
-    def dealWithSeqString(strs: Seq[CharSequence]) = Strings.equalsAnyIgnoreCase(strOrNull, strs: _*)
+  def equalsAnyIgnoreCase[S: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchStrings: S*): Boolean = {
+    def applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[S]
+    def charSeqSeq: Seq[CharSequence] =
+      applyM.fold(_.higherKindApply[Seq](searchStrings), func => mapToCharSequenceSeq(func.higherKindApply[Seq](searchStrings)))
 
     if (searchStrings == null)
       Strings.equalsAnyIgnoreCase(strOrNull, null)
     else
-      applyM.fold(dealWithSeqString, s => dealWithSeqString(mapToCharSequenceSeq(s)))
+      Strings.equalsAnyIgnoreCase(strOrNull, charSeqSeq: _*)
   }
 
   /** <p>Compares two CharSequences, returning `true` if they represent equal sequences of characters, ignoring case.</p>
@@ -1697,8 +1698,10 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     searchArgs: S*
   ): Int = {
 
-    val charAdt =
+    def typeCharAdt =
       Adt.CoProduct6[Char, Option[Char], CharSequence, Option[CharSequence], SeqCharSequence, Option[SeqCharSequence]].typeOnly[S]
+    def charAdt =
+      Adt.CoProduct6[Char, Option[Char], CharSequence, Option[CharSequence], SeqCharSequence, Option[SeqCharSequence]]
 
     def indexOfNull = Strings.indexOfAny(strOrNull, null)
 
@@ -1708,18 +1711,17 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     def dealWithString(string: CharSequence)          = Strings.indexOfAny(strOrNull, string)
 
     if (searchArgs == null) indexOfNull
-    else if (searchArgs.length == 1) {
-      val arg0 = searchArgs.head
-      charAdt.fold(
-        func => dealWithChar(func.adtFunctionApply(arg0)),
-        func => func.adtFunctionApply(arg0).map(dealWithChar).getOrElse(indexOfNull),
-        func => dealWithString(func.adtFunctionApply(arg0)),
-        func => func.adtFunctionApply(arg0).map(dealWithString).getOrElse(indexOfNull),
-        func => dealWithString(func.adtFunctionApply(arg0)),
-        func => func.adtFunctionApply(arg0).map(dealWithString).getOrElse(indexOfNull)
+    else if (searchArgs.length == 1)
+      charAdt(searchArgs.head).fold(
+        arg0 => dealWithChar(arg0),
+        arg0 => arg0.map(dealWithChar).getOrElse(indexOfNull),
+        arg0 => dealWithString(arg0),
+        arg0 => arg0.map(dealWithString).getOrElse(indexOfNull),
+        arg0 => dealWithString(arg0),
+        arg0 => arg0.map(dealWithString).getOrElse(indexOfNull)
       )
-    } else
-      charAdt.fold(
+    else
+      typeCharAdt.fold(
         func => dealWithSeqChar(func.higherKindApply[Seq](searchArgs)),
         func => dealWithSeqChar(mapToCharSeq(func.higherKindApply[Seq](searchArgs))),
         func => dealWithSeqString(func.higherKindApply[Seq](searchArgs)),
@@ -2274,14 +2276,15 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     * @return
     *   the last index of any of the CharSequences, -1 if no match
     */
-  def lastIndexOfAny[S: Options2F[Seq, *, Seq[CharSequence], Seq[Option[CharSequence]]]](searchArgs: S*): Int = {
-    def applyM                                      = Adt.CoProduct2[Seq[CharSequence], Seq[Option[CharSequence]]](searchArgs)
-    def dealWithCharSeqSeq(strs: Seq[CharSequence]) = Strings.lastIndexOfAny(strOrNull, strs: _*)
+  def lastIndexOfAny[S: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchArgs: S*): Int = {
+    def applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[S]
+    def seq: Seq[CharSequence] =
+      applyM.fold(_.higherKindApply[Seq](searchArgs), func => mapToCharSequenceSeq(func.higherKindApply[Seq](searchArgs)))
 
     if (searchArgs == null)
       Strings.lastIndexOfAny(strOrNull, null)
     else
-      applyM.fold(dealWithCharSeqSeq, s => dealWithCharSeqSeq(mapToCharSequenceSeq(s)))
+      Strings.lastIndexOfAny(strOrNull, seq: _*)
   }
 
   /** <p>Case in-sensitive find of the last index within a CharSequence.</p>
@@ -2671,24 +2674,25 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     * @return
     *   A new String if prefix was prepended, the same string otherwise.
     */
-  def prependIfMissing[P: Adt.CoProducts2[*, CharSequence, Option[CharSequence]], Ps: Options2F[Seq, *, Seq[CharSequence], Seq[
-    Option[CharSequence]
-  ]]](
+  def prependIfMissing[
+    P: Adt.CoProducts2[*, CharSequence, Option[CharSequence]],
+    Ps: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]
+  ](
     prefix: P,
     prefixes: Ps*
   ): Option[String] = {
 
     def prefixStr: CharSequence = mapToCsOpt(prefix).orNull
 
-    def prefixesApplyM                              = Adt.CoProduct2[Seq[CharSequence], Seq[Option[CharSequence]]](prefixes)
-    def dealWithCharSeqSeq(strs: Seq[CharSequence]) = Strings.prependIfMissing(strOrNull, prefixStr, strs: _*)
-
-    def result: String = prefixesApplyM.fold(dealWithCharSeqSeq, s => dealWithCharSeqSeq(mapToCharSequenceSeq(s)))
+    def prefixesApplyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[Ps]
+    def result: Seq[CharSequence] =
+      prefixesApplyM.fold(_.higherKindApply[Seq](prefixes), func => mapToCharSequenceSeq(func.higherKindApply[Seq](prefixes)))
 
     if (prefixes == null)
       Option(Strings.prependIfMissing(strOrNull, prefixStr, null))
     else
-      Option(result)
+      Option(Strings.prependIfMissing(strOrNull, prefixStr, result: _*))
+
   }
 
   /** Prepends the prefix to the start of the string if the string does not already start with any of the prefixes.
@@ -2790,22 +2794,20 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     * @return
     *   A new String if prefix was prepended, the same string otherwise.
     */
-  def prependIfMissingIgnoreCase[P: Adt.CoProducts2[*, String, Option[String]], Ps: Options2F[Seq, *, Seq[CharSequence], Seq[
-    Option[CharSequence]
-  ]]](
+  def prependIfMissingIgnoreCase[P: Adt.CoProducts2[*, String, Option[String]], Ps: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](
     prefix: P,
     prefixes: Ps*
   ): Option[String] = {
-    def prefixStr      = mapToStrOpt(prefix).orNull
-    def prefixesApplyM = Adt.CoProduct2[Seq[CharSequence], Seq[Option[CharSequence]]](prefixes)
+    def prefixStr = mapToStrOpt(prefix).orNull
 
-    def dealWithCharSeqSeq(strs: Seq[CharSequence]) = Strings.prependIfMissingIgnoreCase(strOrNull, prefixStr, strs: _*)
-    def result: String = prefixesApplyM.fold(dealWithCharSeqSeq, s => dealWithCharSeqSeq(mapToCharSequenceSeq(s)))
+    def prefixesApplyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[Ps]
+    def result: Seq[CharSequence] =
+      prefixesApplyM.fold(_.higherKindApply[Seq](prefixes), func => mapToCharSequenceSeq(func.higherKindApply[Seq](prefixes)))
 
     if (prefixes == null)
       Option(Strings.prependIfMissingIgnoreCase(strOrNull, prefixStr, null))
     else
-      Option(result)
+      Option(Strings.prependIfMissingIgnoreCase(strOrNull, prefixStr, result: _*))
   }
 
   /** Prepends the prefix to the start of the string if the string does not already start, case insensitive, with any of the prefixes.
@@ -4043,14 +4045,14 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     *   `true` if the input `sequence` is `null` AND no `searchStrings` are provided, or the input `sequence` begins with any of the
     *   provided case-sensitive `searchStrings`.
     */
-  def startsWithAny[CS: Options2F[Seq, *, Seq[CharSequence], Seq[Option[CharSequence]]]](searchStrings: CS*): Boolean = {
-    def applyM = Adt.CoProduct2[Seq[CharSequence], Seq[Option[CharSequence]]](searchStrings)
+  def startsWithAny[CS: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchStrings: CS*): Boolean = {
+    def applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[CS]
+    def strs: Seq[CharSequence] =
+      applyM.fold(_.higherKindApply[Seq](searchStrings), func => for (c <- func.higherKindApply[Seq](searchStrings)) yield c.orNull)
 
     if (searchStrings == null) Strings.startsWithAny(strOrNull)
-    else {
-      val strs: Seq[CharSequence] = applyM.fold(identity, css => for (c <- css) yield c.orNull)
+    else
       Strings.startsWithAny(strOrNull, strs: _*)
-    }
   }
 
   /** <p>Case insensitive check if a CharSequence starts with a specified prefix.</p>
