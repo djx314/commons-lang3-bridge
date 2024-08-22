@@ -12,11 +12,11 @@ import scala.collection.compat._
 private object privateUtils {
   def mapToStrOpt[T: Adt.CoProducts2[*, String, Option[String]]](t: T): Option[String] = {
     val applyM = Adt.CoProduct2[String, Option[String]](t)
-    applyM.fold(Option(_), identity)
+    applyM.fold(Option(_))(identity)
   }
   def mapToCsOpt[T: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](t: T): Option[CharSequence] = {
     val applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]](t)
-    applyM.fold(Option(_), identity)
+    applyM.fold(Option(_))(identity)
   }
   def mapToCharSeq(t: Seq[Option[Char]]): Seq[Char]                         = t.collect { case Some(s) => s }
   def mapToCharSequenceSeq(t: Seq[Option[CharSequence]]): Seq[CharSequence] = for (i <- t) yield i.orNull
@@ -37,7 +37,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
   @inline private def strProAdt: Adt.CoProduct2[String, Option[String]] = Adt.CoProduct2[String, Option[String]](value)
 
   @inline private def strOpt: Option[String] = mapToStrOpt(value)
-  @inline private def strOrNull: String      = strProAdt.fold(identity, _.orNull)
+  @inline private def strOrNull: String      = strProAdt.fold(identity)(_.orNull)
 
   /** * <p>Abbreviates a String using ellipses. This will turn "Now is the time for all good men" into "Now is the time for..."</p>
     *
@@ -238,7 +238,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
   ): Option[String] = {
     def suffixOrNull           = mapToStrOpt(suffix).orNull
     def applyM                 = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[SS]
-    def sfs: Seq[CharSequence] = applyM.fold(_.higherKindApply[Seq](suffixes), _.higherKindApply[Seq](suffixes).map(_.orNull))
+    def sfs: Seq[CharSequence] = applyM.fold(_.higherKindApply[Seq](suffixes))(_.higherKindApply[Seq](suffixes).map(_.orNull))
 
     if (suffixes == null) Option(Strings.appendIfMissing(strOrNull, suffixOrNull))
     else {
@@ -293,7 +293,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
   ): Option[String] = {
     def suffixOrNull           = mapToStrOpt(suffix).orNull
     def applyM                 = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[SS]
-    def sfs: Seq[CharSequence] = applyM.fold(_.higherKindApply[Seq](suffixes), func => func.higherKindApply[Seq](suffixes).map(_.orNull))
+    def sfs: Seq[CharSequence] = applyM.fold(_.higherKindApply[Seq](suffixes))(func => func.higherKindApply[Seq](suffixes).map(_.orNull))
 
     if (suffixes == null) Option(Strings.appendIfMissingIgnoreCase(strOrNull, suffixOrNull))
     else {
@@ -738,30 +738,35 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     val applyM = Adt.CoProduct4[Char, CharSequence, Option[Char], Option[CharSequence]].typeOnly[S]
     val adtSeq = Adt.CoProduct2[Seq[Char], Seq[CharSequence]]
 
-    val adtParameter: Adt.CoProduct2[Seq[Char], Seq[CharSequence]] = applyM.fold(
-      func1 => adtSeq(func1.higherKindApply[Seq](searchArgs)),
-      func2 => adtSeq(func2.higherKindApply[Seq](searchArgs)),
-      { func3 =>
-        val applySeq   = for (s <- searchArgs) yield func3.adtFunctionApply(s)
-        val collectSeq = applySeq.collect { case Some(t) => t }
-        adtSeq(collectSeq)
-      },
-      { func4 =>
-        val applySeq   = for (s <- searchArgs) yield func4.adtFunctionApply(s)
-        val collectSeq = applySeq.collect { case Some(t) => t }
-        adtSeq(collectSeq)
-      }
-    )
-
-    adtParameter.fold(
-      chars => Strings.containsAny(strOrNull, chars: _*),
-      css =>
-        if (css.length == 1) {
-          Strings.containsAny(strOrNull, css.head)
-        } else {
-          Strings.containsAny(strOrNull, css: _*)
+    val adtParameter: Adt.CoProduct2[Seq[Char], Seq[CharSequence]] =
+      applyM.fold
+        .apply { func1 =>
+          adtSeq(func1.higherKindApply[Seq](searchArgs))
         }
-    )
+        .apply { func2 =>
+          adtSeq(func2.higherKindApply[Seq](searchArgs))
+        }
+        .apply { func3 =>
+          val applySeq   = for (s <- searchArgs) yield func3.adtFunctionApply(s)
+          val collectSeq = applySeq.collect { case Some(t) => t }
+          adtSeq(collectSeq)
+        }
+        .apply { func4 =>
+          val applySeq   = for (s <- searchArgs) yield func4.adtFunctionApply(s)
+          val collectSeq = applySeq.collect { case Some(t) => t }
+          adtSeq(collectSeq)
+        }
+
+    adtParameter.fold
+      .apply { chars =>
+        Strings.containsAny(strOrNull, chars: _*)
+      }
+      .apply { css =>
+        if (css.length == 1)
+          Strings.containsAny(strOrNull, css.head)
+        else
+          Strings.containsAny(strOrNull, css: _*)
+      }
 
   }
 
@@ -808,10 +813,8 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
   def containsAnyIgnoreCase[S: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchArgs: S*): Boolean = {
     val applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[S]
 
-    val newSeq: Seq[CharSequence] = applyM.fold(
-      t1 => t1.higherKindApply[Seq](searchArgs),
-      t2 => for (s <- searchArgs) yield t2.adtFunctionApply(s).orNull
-    )
+    val newSeq: Seq[CharSequence] =
+      applyM.fold(t1 => t1.higherKindApply[Seq](searchArgs))(t2 => for (s <- searchArgs) yield t2.adtFunctionApply(s).orNull)
 
     Strings.containsAnyIgnoreCase(strOrNull, newSeq: _*)
   }
@@ -925,7 +928,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
   def containsNone[I: Adt.CoProducts2[*, Char, Option[Char]]](invalidChars: I*): Boolean = {
     val applyM = Adt.CoProduct2[Char, Option[Char]].typeOnly[I]
     val charSeq: Seq[Char] =
-      applyM.fold(_.higherKindApply[Seq](invalidChars), func => mapToCharSeq(func.higherKindApply[Seq](invalidChars)))
+      applyM.fold(_.higherKindApply[Seq](invalidChars))(func => mapToCharSeq(func.higherKindApply[Seq](invalidChars)))
 
     Strings.containsNone(strOrNull, charSeq: _*)
   }
@@ -1004,7 +1007,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     */
   def containsOnly[V: Adt.CoProducts2[*, Char, Option[Char]]](valid: V*): Boolean = {
     val applyM             = Adt.CoProduct2[Char, Option[Char]].typeOnly[V]
-    val charSeq: Seq[Char] = applyM.fold(_.higherKindApply[Seq](valid), func => mapToCharSeq(func.higherKindApply[Seq](valid)))
+    val charSeq: Seq[Char] = applyM.fold(_.higherKindApply[Seq](valid))(func => mapToCharSeq(func.higherKindApply[Seq](valid)))
     Strings.containsOnly(strOrNull, charSeq: _*)
   }
 
@@ -1253,7 +1256,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
   def endsWithAny[S: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchStrings: S*): Boolean = {
     def applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[S]
     def charSeqSeq: Seq[CharSequence] =
-      applyM.fold(_.higherKindApply[Seq](searchStrings), func => mapToCharSequenceSeq(func.higherKindApply[Seq](searchStrings)))
+      applyM.fold(_.higherKindApply[Seq](searchStrings))(func => mapToCharSequenceSeq(func.higherKindApply[Seq](searchStrings)))
 
     if (searchStrings == null)
       Strings.endsWithAny(strOrNull, null)
@@ -1336,7 +1339,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
   def equalsAnyIgnoreCase[S: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchStrings: S*): Boolean = {
     def applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[S]
     def charSeqSeq: Seq[CharSequence] =
-      applyM.fold(_.higherKindApply[Seq](searchStrings), func => mapToCharSequenceSeq(func.higherKindApply[Seq](searchStrings)))
+      applyM.fold(_.higherKindApply[Seq](searchStrings))(func => mapToCharSequenceSeq(func.higherKindApply[Seq](searchStrings)))
 
     if (searchStrings == null)
       Strings.equalsAnyIgnoreCase(strOrNull, null)
@@ -1383,12 +1386,11 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     val dealWithCharsetOpt                              = dealWithCharsetOptFunc _
     def dealWithStringOpt                               = dealWithStringOptFunc _
 
-    applyM.fold(
-      dealWithCharsetOpt,
-      dealWithCharsetOpt.compose(_.orNull),
-      dealWithStringOpt,
-      dealWithStringOpt.compose(_.orNull)
-    )
+    applyM.fold
+      .apply(dealWithCharsetOpt)
+      .apply(dealWithCharsetOpt.compose(_.orNull))
+      .apply(dealWithStringOpt)
+      .apply(dealWithStringOpt.compose(_.orNull))
   }
 
   /** <p>Checks if a String `str`contains Unicode digits, if yes then concatenate all the digits in `str`and return it as a String.</p>
@@ -1712,23 +1714,21 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
 
     if (searchArgs == null) indexOfNull
     else if (searchArgs.length == 1)
-      charAdt(searchArgs.head).fold(
-        arg0 => dealWithChar(arg0),
-        arg0 => arg0.map(dealWithChar).getOrElse(indexOfNull),
-        arg0 => dealWithString(arg0),
-        arg0 => arg0.map(dealWithString).getOrElse(indexOfNull),
-        arg0 => dealWithString(arg0),
-        arg0 => arg0.map(dealWithString).getOrElse(indexOfNull)
-      )
+      charAdt(searchArgs.head).fold
+        .apply(arg0 => dealWithChar(arg0))
+        .apply(arg0 => arg0.map(dealWithChar).getOrElse(indexOfNull))
+        .apply(arg0 => dealWithString(arg0))
+        .apply(arg0 => arg0.map(dealWithString).getOrElse(indexOfNull))
+        .apply(arg0 => dealWithString(arg0))
+        .apply(arg0 => arg0.map(dealWithString).getOrElse(indexOfNull))
     else
-      typeCharAdt.fold(
-        func => dealWithSeqChar(func.higherKindApply[Seq](searchArgs)),
-        func => dealWithSeqChar(mapToCharSeq(func.higherKindApply[Seq](searchArgs))),
-        func => dealWithSeqString(func.higherKindApply[Seq](searchArgs)),
-        func => dealWithSeqString(mapToCharSequenceSeq(func.higherKindApply[Seq](searchArgs))),
-        func => dealWithSeqString(func.higherKindApply[Seq](searchArgs)),
-        func => dealWithSeqString(mapToCharSequenceSeq(func.higherKindApply[Seq](searchArgs)))
-      )
+      typeCharAdt.fold
+        .apply(func => dealWithSeqChar(func.higherKindApply[Seq](searchArgs)))
+        .apply(func => dealWithSeqChar(mapToCharSeq(func.higherKindApply[Seq](searchArgs))))
+        .apply(func => dealWithSeqString(func.higherKindApply[Seq](searchArgs)))
+        .apply(func => dealWithSeqString(mapToCharSequenceSeq(func.higherKindApply[Seq](searchArgs))))
+        .apply(func => dealWithSeqString(func.higherKindApply[Seq](searchArgs)))
+        .apply(func => dealWithSeqString(mapToCharSequenceSeq(func.higherKindApply[Seq](searchArgs))))
 
   }
 
@@ -2202,12 +2202,11 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     */
   def lastIndexOf[S: Adt.CoProducts4[*, Char, Int, CharSequence, Option[CharSequence]]](searchArg: S): Int = {
     val applyM = Adt.CoProduct4[Char, Int, CharSequence, Option[CharSequence]](searchArg)
-    applyM.fold(
-      ch => Strings.lastIndexOf(strOrNull, ch),
-      i => Strings.lastIndexOf(strOrNull, i),
-      str => Strings.lastIndexOf(strOrNull, str),
-      ostr => Strings.lastIndexOf(strOrNull, ostr.orNull)
-    )
+    applyM.fold
+      .apply(ch => Strings.lastIndexOf(strOrNull, ch))
+      .apply(i => Strings.lastIndexOf(strOrNull, i))
+      .apply(str => Strings.lastIndexOf(strOrNull, str))
+      .apply(ostr => Strings.lastIndexOf(strOrNull, ostr.orNull))
   }
 
   /** Returns the index within `seq` of the last occurrence of the specified character, searching backward starting at the specified index.
@@ -2243,12 +2242,11 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
     */
   def lastIndexOf[S: Adt.CoProducts4[*, Char, Int, CharSequence, Option[CharSequence]]](searchArg: S, startPos: Int): Int = {
     val applyM = Adt.CoProduct4[Char, Int, CharSequence, Option[CharSequence]](searchArg)
-    applyM.fold(
-      ch => Strings.lastIndexOf(strOrNull, ch, startPos),
-      i => Strings.lastIndexOf(strOrNull, i, startPos),
-      str => Strings.lastIndexOf(strOrNull, str, startPos),
-      ostr => Strings.indexOf(strOrNull, ostr.orNull, startPos)
-    )
+    applyM.fold
+      .apply(ch => Strings.lastIndexOf(strOrNull, ch, startPos))
+      .apply(i => Strings.lastIndexOf(strOrNull, i, startPos))
+      .apply(str => Strings.lastIndexOf(strOrNull, str, startPos))
+      .apply(ostr => Strings.indexOf(strOrNull, ostr.orNull, startPos))
   }
 
   /** <p>Find the latest index of any substring in a set of potential substrings.</p>
@@ -2279,7 +2277,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
   def lastIndexOfAny[S: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchArgs: S*): Int = {
     def applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[S]
     def seq: Seq[CharSequence] =
-      applyM.fold(_.higherKindApply[Seq](searchArgs), func => mapToCharSequenceSeq(func.higherKindApply[Seq](searchArgs)))
+      applyM.fold(_.higherKindApply[Seq](searchArgs))(func => mapToCharSequenceSeq(func.higherKindApply[Seq](searchArgs)))
 
     if (searchArgs == null)
       Strings.lastIndexOfAny(strOrNull, null)
@@ -2686,7 +2684,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
 
     def prefixesApplyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[Ps]
     def result: Seq[CharSequence] =
-      prefixesApplyM.fold(_.higherKindApply[Seq](prefixes), func => mapToCharSequenceSeq(func.higherKindApply[Seq](prefixes)))
+      prefixesApplyM.fold(_.higherKindApply[Seq](prefixes))(func => mapToCharSequenceSeq(func.higherKindApply[Seq](prefixes)))
 
     if (prefixes == null)
       Option(Strings.prependIfMissing(strOrNull, prefixStr, null))
@@ -2802,7 +2800,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
 
     def prefixesApplyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[Ps]
     def result: Seq[CharSequence] =
-      prefixesApplyM.fold(_.higherKindApply[Seq](prefixes), func => mapToCharSequenceSeq(func.higherKindApply[Seq](prefixes)))
+      prefixesApplyM.fold(_.higherKindApply[Seq](prefixes))(func => mapToCharSequenceSeq(func.higherKindApply[Seq](prefixes)))
 
     if (prefixes == null)
       Option(Strings.prependIfMissingIgnoreCase(strOrNull, prefixStr, null))
@@ -4048,7 +4046,7 @@ class StringCommons[T: Adt.CoProducts2[*, String, Option[String]]](value: T) {
   def startsWithAny[CS: Adt.CoProducts2[*, CharSequence, Option[CharSequence]]](searchStrings: CS*): Boolean = {
     def applyM = Adt.CoProduct2[CharSequence, Option[CharSequence]].typeOnly[CS]
     def strs: Seq[CharSequence] =
-      applyM.fold(_.higherKindApply[Seq](searchStrings), func => for (c <- func.higherKindApply[Seq](searchStrings)) yield c.orNull)
+      applyM.fold(_.higherKindApply[Seq](searchStrings))(func => for (c <- func.higherKindApply[Seq](searchStrings)) yield c.orNull)
 
     if (searchStrings == null) Strings.startsWithAny(strOrNull)
     else

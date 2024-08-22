@@ -41,8 +41,6 @@ object CommonSettings {
     common +: compat
   }
 
-  val supportedScalaVersions = Seq(scalaV.v212, scalaV.v213, scalaV.v3)
-
   val pushSettings = Seq(
     version              := "0.1.0",
     organization         := "net.scalax",
@@ -83,7 +81,6 @@ object CommonSettings {
 
   private val commonSetting = Seq(
     parVersion                                                   := CrossVersion.partialVersion(scalaVersion.value),
-    scalaVersion                                                 := scalaV.v212,
     scalacOptions                                                := scalacOptionsVersion(parVersion.value),
     org.scalafmt.sbt.ScalafmtPlugin.autoImport.scalafmtOnCompile := true,
     Compile / unmanagedSourceDirectories ++= {
@@ -94,7 +91,7 @@ object CommonSettings {
     Test / unmanagedSourceDirectories ++= genDirectory(sourceDirectory.value, "test", parVersion.value)
   )
 
-  val commonProjectSettings  = pushSettings ++ commonSetting ++ Seq(crossScalaVersions := supportedScalaVersions)
+  val commonProjectSettings  = pushSettings ++ commonSetting
   val codegenProjectSettings = commonSetting
 
 }
