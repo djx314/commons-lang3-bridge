@@ -17,8 +17,7 @@ object CommonSettings {
     )
     val compat = scalaVersion match {
       case Some((2, scalaMajor)) if scalaMajor == 11 => Seq("-Xexperimental", "-Xlint", "-Ywarn-dead-code")
-      case Some((3, scalaMajor))                     => Seq("-Ykind-projector")
-      case _                                         => Nil
+      case _                                         => Seq.empty
     }
     common ++ compat
   }
