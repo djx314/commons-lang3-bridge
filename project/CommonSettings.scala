@@ -65,17 +65,12 @@ object CommonSettings {
         url = url("https://github.com/djx314")
       )
     ),
-    description := "Scala Bridge For Apache Commons Lang3 Library",
-    licenses    := List("Apache" -> new URL("https://github.com/scala-workers/commons-lang3-bridge/blob/master/LICENSE")),
-    homepage    := Some(url("https://github.com/scala-workers/commons-lang3-bridge")),
-    // Remove all additional repository other than Maven Central from POM
-    pomIncludeRepository := { _ => false },
-    publishTo := {
-      val nexus = "https://s01.oss.sonatype.org/"
-      if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
-      else Some("releases" at nexus + "service/local/staging/deploy/maven2")
-    },
-    publishMavenStyle := true
+    description          := "Scala Bridge For Apache Commons Lang3 Library",
+    licenses             := List("Apache" -> new URL("https://github.com/scala-workers/commons-lang3-bridge/blob/master/LICENSE")),
+    homepage             := Some(url("https://github.com/scala-workers/commons-lang3-bridge")),
+    pomIncludeRepository := { _ => false }, // Remove all additional repository other than Maven Central from POM
+    publishTo            := localStaging.value,
+    publishMavenStyle    := true
   )
 
   private val commonSetting = Seq(
