@@ -1,5 +1,5 @@
-import djx.sbt.depts.plugins.{PluginsCollection => projectPlugins}
+import djx.sbt.depts.plugins.PluginsCollection
 
-addSbtPlugin(projectPlugins.`sbt-scalafmt`)
-addSbtPlugin(projectPlugins.`sbt-pgp`)
-addSbtPlugin(projectPlugins.`sbt-depts`)
+addSbtPlugin(PluginsCollection.`sbt-scalafmt`)
+addSbtPlugin(PluginsCollection.`sbt-pgp`)
+addSbtPlugin(PluginsCollection.`sbt-depts`)
