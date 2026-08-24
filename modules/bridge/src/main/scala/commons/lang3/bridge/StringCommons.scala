@@ -1,6 +1,6 @@
 package commons.lang3.bridge
 
-import net.scalax.simple.adt.{TypeAdt => Adt}
+import net.scalax.simple.adt.{typedadt => Adt}
 import org.apache.commons.lang3.{StringUtils => Strings}
 
 import java.nio.charset.Charset

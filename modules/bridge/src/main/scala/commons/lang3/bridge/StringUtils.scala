@@ -12,7 +12,7 @@ object StringUtils {
 
   object ops {
 
-    import net.scalax.simple.adt.{TypeAdt => Adt}
+    import net.scalax.simple.adt.{typedadt => Adt}
 
     implicit class StringOptExt[T: Adt.CoProducts2[*, String, Option[String]]](x: T) {
       val ops: StringCommons[T] = new StringCommons(x)

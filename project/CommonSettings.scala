@@ -44,10 +44,10 @@ object CommonSettings {
     version              := "0.1.0",
     organization         := "net.scalax",
     organizationName     := "Scala Workers",
-    organizationHomepage := Some(url("https://github.com/scala-workers")),
+    organizationHomepage := Some(uri("https://github.com/scala-workers")),
     scmInfo := Some(
       ScmInfo(
-        url("https://github.com/scala-workers/commons-lang3-bridge"),
+        uri("https://github.com/scala-workers/commons-lang3-bridge"),
         "scm:git@github.com:scala-workers/commons-lang3-bridge.git"
       )
     ),
@@ -56,18 +56,18 @@ object CommonSettings {
         id = "Mars Liu",
         name = "Liu Xin",
         email = "mars.liu@outlook.com",
-        url = url("https://marchliu.github.io/")
+        url = uri("https://marchliu.github.io/")
       ),
       Developer(
         id = "djx314",
         name = "djx314",
         email = "djx314@sina.cn",
-        url = url("https://github.com/djx314")
+        url = uri("https://github.com/djx314")
       )
     ),
     description          := "Scala Bridge For Apache Commons Lang3 Library",
-    licenses             := List("Apache" -> new URL("https://github.com/scala-workers/commons-lang3-bridge/blob/master/LICENSE")),
-    homepage             := Some(url("https://github.com/scala-workers/commons-lang3-bridge")),
+    licenses             := List(License("Apache", uri("https://github.com/scala-workers/commons-lang3-bridge/blob/master/LICENSE"))),
+    homepage             := Some(uri("https://github.com/scala-workers/commons-lang3-bridge")),
     pomIncludeRepository := { _ => false }, // Remove all additional repository other than Maven Central from POM
     publishTo            := localStaging.value,
     publishMavenStyle    := true
